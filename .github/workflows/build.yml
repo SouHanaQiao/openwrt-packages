@@ -1,0 +1,102 @@
+name: Build OpenWrt package feeds
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - openwrt-24.10
+
+concurrency:
+  group: openwrt-package-pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: OpenWrt ${{ matrix.openwrt_version }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - channel: "25.12"
+            ref: main
+            openwrt_version: "25.12.5"
+            package_format: apk
+            sdk_url: https://downloads.openwrt.org/releases/25.12.5/targets/armsr/armv8/openwrt-sdk-25.12.5-armsr-armv8_gcc-14.3.0_musl.Linux-x86_64.tar.zst
+            sdk_sha256: 1b0316604a3e820b2b008a1baff3f9dac6716af942bef800930e58c7de98c98b
+          - channel: "24.10"
+            ref: openwrt-24.10
+            openwrt_version: "24.10.1"
+            package_format: ipk
+            sdk_url: https://downloads.openwrt.org/releases/24.10.1/targets/armsr/armv8/openwrt-sdk-24.10.1-armsr-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+            sdk_sha256: c9a8eb4072b63cda0037728c39e8d460c6f12590e42cad57003836f1d2974434
+
+    steps:
+      - name: Check out package branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+
+      - name: Set up Go bootstrap
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.23.x"
+          cache: false
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential clang flex bison g++ gawk gcc-multilib gettext git libncurses5-dev libssl-dev python3-setuptools rsync swig unzip zlib1g-dev file wget zstd
+
+      - name: Validate feed
+        run: bash scripts/validate-feed.sh
+
+      - name: Build signed package feed
+        env:
+          OPENWRT_VERSION: ${{ matrix.openwrt_version }}
+          CHANNEL: ${{ matrix.channel }}
+          SDK_URL: ${{ matrix.sdk_url }}
+          SDK_SHA256: ${{ matrix.sdk_sha256 }}
+          PACKAGE_FORMAT: ${{ matrix.package_format }}
+          APK_PRIVATE_KEY: ${{ secrets.APK_PRIVATE_KEY }}
+          OPKG_PRIVATE_KEY: ${{ secrets.OPKG_PRIVATE_KEY }}
+          BUILD_JOBS: "2"
+        run: bash scripts/build-feed.sh
+
+      - name: Upload version feed
+        uses: actions/upload-artifact@v4
+        with:
+          name: feed-${{ matrix.channel }}
+          path: site/
+          if-no-files-found: error
+
+  deploy:
+    name: Deploy package repository
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Merge version feeds
+        uses: actions/download-artifact@v4
+        with:
+          pattern: feed-*
+          path: site
+          merge-multiple: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+

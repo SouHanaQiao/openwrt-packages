@@ -1,0 +1,26 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+BIN_PATH="/usr/bin/clash_subscriber"
+PID_FILE="/var/run/clash_subscriber.pid"
+LOG_FILE="/var/log/clash_subscriber.log"
+
+start() {
+    echo "Starting clash_subscriber..."
+    [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null && echo "Already running" && return
+    nohup "$BIN_PATH" > "$LOG_FILE" 2>&1 &
+    echo $! > "$PID_FILE"
+    echo "Started with PID $(cat "$PID_FILE")"
+}
+
+stop() {
+    echo "Stopping clash_subscriber..."
+    [ -f "$PID_FILE" ] && kill "$(cat "$PID_FILE")" 2>/dev/null && rm -f "$PID_FILE" && echo "Stopped."
+}
+
+restart() {
+    stop
+    sleep 1
+    start
+}

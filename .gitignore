@@ -1,0 +1,8 @@
+.DS_Store
+*.log
+*.tmp
+private-key.pem
+key-build
+site/
+sdk/
+
