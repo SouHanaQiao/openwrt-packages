@@ -9,7 +9,7 @@
 | `main` | 25.12.5 | APK | 当前维护版本 |
 | `openwrt-24.10` | 24.10.1 | IPK | 旧固件兼容版本 |
 
-官方 OpenWrt 已提供的软件包不在此仓库重复维护。本仓库只保存自维护包和旧固件实际使用的第三方包。详细来源见 [SOURCES.md](SOURCES.md)。
+本仓库保存自维护包、旧 24.10 固件实际生成过的第三方包，以及需要独立更新版本的 SmartDNS、AdGuardHome 等包。自有 Feed 排在官方 Feed 之前，同名包优先使用本仓库版本。详细来源见 [SOURCES.md](SOURCES.md)。
 
 ## 源码 Feed
 
@@ -81,4 +81,3 @@ GitHub Actions 使用与固件版本完全匹配的官方 SDK：
 升级软件包时必须提高 `PKG_VERSION` 或 `PKG_RELEASE`，否则路由器不会识别为新版本。
 
 内核模块（例如 `kmod-nft-fullcone`）必须与运行中固件的内核 ABI 完全一致，不要跨固件版本安装。软件包在线升级也不能替代完整固件升级。
-
