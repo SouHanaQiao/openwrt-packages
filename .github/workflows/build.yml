@@ -28,12 +28,16 @@ jobs:
             ref: main
             openwrt_version: "25.12.5"
             package_format: apk
+            openwrt_ref: f0a60eee2fe051741c643ea6118718aae1ef17fb
+            feeds_buildinfo_url: https://downloads.openwrt.org/releases/25.12.5/targets/armsr/armv8/feeds.buildinfo
             sdk_url: https://downloads.openwrt.org/releases/25.12.5/targets/armsr/armv8/openwrt-sdk-25.12.5-armsr-armv8_gcc-14.3.0_musl.Linux-x86_64.tar.zst
             sdk_sha256: 1b0316604a3e820b2b008a1baff3f9dac6716af942bef800930e58c7de98c98b
           - channel: "24.10"
             ref: openwrt-24.10
             openwrt_version: "24.10.1"
             package_format: ipk
+            openwrt_ref: d183d7bb7827a469f09bf77f2f22fd9d70ac0ed6
+            feeds_buildinfo_url: https://downloads.openwrt.org/releases/24.10.1/targets/armsr/armv8/feeds.buildinfo
             sdk_url: https://downloads.openwrt.org/releases/24.10.1/targets/armsr/armv8/openwrt-sdk-24.10.1-armsr-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst
             sdk_sha256: c9a8eb4072b63cda0037728c39e8d460c6f12590e42cad57003836f1d2974434
 
@@ -46,7 +50,7 @@ jobs:
       - name: Set up Go bootstrap
         uses: actions/setup-go@v6
         with:
-          go-version: "1.23.x"
+          go-version: "1.24.x"
           cache: false
 
       - name: Install build dependencies
@@ -63,6 +67,8 @@ jobs:
           CHANNEL: ${{ matrix.channel }}
           SDK_URL: ${{ matrix.sdk_url }}
           SDK_SHA256: ${{ matrix.sdk_sha256 }}
+          OPENWRT_REF: ${{ matrix.openwrt_ref }}
+          FEEDS_BUILDINFO_URL: ${{ matrix.feeds_buildinfo_url }}
           PACKAGE_FORMAT: ${{ matrix.package_format }}
           APK_PRIVATE_KEY: ${{ secrets.APK_PRIVATE_KEY }}
           OPKG_PRIVATE_KEY: ${{ secrets.OPKG_PRIVATE_KEY }}
@@ -99,4 +105,3 @@ jobs:
       - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-

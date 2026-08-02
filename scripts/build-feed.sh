@@ -5,6 +5,8 @@ set -euo pipefail
 : "${CHANNEL:?missing CHANNEL}"
 : "${SDK_URL:?missing SDK_URL}"
 : "${SDK_SHA256:?missing SDK_SHA256}"
+: "${OPENWRT_REF:?missing OPENWRT_REF}"
+: "${FEEDS_BUILDINFO_URL:?missing FEEDS_BUILDINFO_URL}"
 : "${PACKAGE_FORMAT:?missing PACKAGE_FORMAT}"
 
 repo_root="${GITHUB_WORKSPACE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -25,7 +27,16 @@ if [[ -z "$sdk_root" ]]; then
 fi
 
 cd "$sdk_root"
-printf '\nsrc-link souhana %s/packages\n' "$repo_root" >> feeds.conf.default
+feeds_buildinfo="$work_root/feeds.buildinfo"
+curl --fail --location --retry 5 --retry-delay 3 \
+  "$FEEDS_BUILDINFO_URL" -o "$feeds_buildinfo"
+grep -Eq '^src-git packages https://git\.openwrt\.org/feed/packages\.git\^[0-9a-f]{40}$' \
+  "$feeds_buildinfo"
+{
+  printf 'src-git base https://git.openwrt.org/openwrt/openwrt.git^%s\n' "$OPENWRT_REF"
+  cat "$feeds_buildinfo"
+  printf 'src-link souhana %s/packages\n' "$repo_root"
+} > feeds.conf.default
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 ./scripts/feeds install -a -f -p souhana -d m
@@ -47,8 +58,24 @@ else
 fi
 
 make defconfig
+mapfile -t custom_package_dirs < <(
+  find "$repo_root/packages" -mindepth 1 -maxdepth 1 -type d -print | sort
+)
+if (( ${#custom_package_dirs[@]} == 0 )); then
+  echo "no custom package directories found" >&2
+  exit 1
+fi
+
+custom_targets=()
+for package_dir in "${custom_package_dirs[@]}"; do
+  package_name="$(basename "$package_dir")"
+  custom_targets+=("package/feeds/souhana/$package_name/compile")
+done
+
+printf 'building custom targets:\n'
+printf '  %s\n' "${custom_targets[@]}"
 GOFLAGS=-buildvcs=false GOPROXY=https://proxy.golang.org,direct \
-  make -j"${BUILD_JOBS:-2}" package/compile V=s
+  make -j"${BUILD_JOBS:-2}" "${custom_targets[@]}" V=s
 make package/index
 
 arch="$(sed -n 's/^CONFIG_TARGET_ARCH_PACKAGES="\(.*\)"/\1/p' .config)"
@@ -77,4 +104,3 @@ else
 fi
 
 echo "published build output in $output_dir"
-
