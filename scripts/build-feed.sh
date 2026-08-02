@@ -33,13 +33,12 @@ curl --fail --location --retry 5 --retry-delay 3 \
 grep -Eq '^src-git packages https://git\.openwrt\.org/feed/packages\.git\^[0-9a-f]{40}$' \
   "$feeds_buildinfo"
 {
+  printf 'src-link souhana %s/packages\n' "$repo_root"
   printf 'src-git base https://git.openwrt.org/openwrt/openwrt.git^%s\n' "$OPENWRT_REF"
   cat "$feeds_buildinfo"
-  printf 'src-link souhana %s/packages\n' "$repo_root"
 } > feeds.conf.default
 ./scripts/feeds update -a
-./scripts/feeds install -a
-./scripts/feeds install -a -f -p souhana -d m
+./scripts/feeds install -a -p souhana -d m
 
 go_root="$(go env GOROOT)"
 printf 'CONFIG_GOLANG_EXTERNAL_BOOTSTRAP_ROOT="%s"\n' "$go_root" >> .config
@@ -69,6 +68,10 @@ fi
 custom_targets=()
 for package_dir in "${custom_package_dirs[@]}"; do
   package_name="$(basename "$package_dir")"
+  if [[ ! -e "package/feeds/souhana/$package_name" ]]; then
+    echo "custom package was not installed from souhana feed: $package_name" >&2
+    exit 1
+  fi
   custom_targets+=("package/feeds/souhana/$package_name/compile")
 done
 
