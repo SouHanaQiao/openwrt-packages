@@ -44,6 +44,13 @@ go_root="$(go env GOROOT)"
 printf 'CONFIG_GOLANG_EXTERNAL_BOOTSTRAP_ROOT="%s"\n' "$go_root" >> .config
 printf 'CONFIG_SIGNED_PACKAGES=y\n' >> .config
 
+# Ruby enables YJIT by default on aarch64 in OpenWrt 24.10. That optional
+# feature pulls in rust/host, whose pinned CI LLVM bootstrap is no longer
+# available upstream. OpenClash only needs Ruby itself, not YJIT.
+if [[ "$OPENWRT_VERSION" == "24.10.1" ]]; then
+  printf '# CONFIG_RUBY_ENABLE_YJIT is not set\n' >> .config
+fi
+
 if [[ "$PACKAGE_FORMAT" == "apk" ]]; then
   : "${APK_PRIVATE_KEY:?missing APK_PRIVATE_KEY secret}"
   umask 077
@@ -57,6 +64,11 @@ else
 fi
 
 make defconfig
+
+if [[ "$OPENWRT_VERSION" == "24.10.1" ]] && grep -q '^CONFIG_RUBY_ENABLE_YJIT=y' .config; then
+  echo "RUBY_ENABLE_YJIT must remain disabled for the OpenWrt 24.10 build" >&2
+  exit 1
+fi
 mapfile -t custom_package_dirs < <(
   find "$repo_root/packages" -mindepth 1 -maxdepth 1 -type d -print | sort
 )
