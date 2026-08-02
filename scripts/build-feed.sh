@@ -89,8 +89,20 @@ done
 
 printf 'building custom targets:\n'
 printf '  %s\n' "${custom_targets[@]}"
+
+# Keep compiling independent packages when one historical package is not yet
+# compatible with the selected SDK. This lets the signed feed publish every
+# successful package while the build log and report retain the partial status.
+set +e
 GOFLAGS=-buildvcs=false GOPROXY=https://proxy.golang.org,direct \
-  make -j"${BUILD_JOBS:-2}" "${custom_targets[@]}" V=s
+  make -k -j"${BUILD_JOBS:-2}" "${custom_targets[@]}" V=s
+build_status=$?
+set -e
+
+if (( build_status != 0 )); then
+  echo "::warning::Some historical package targets failed; publishing all successful packages"
+fi
+
 make package/index
 
 arch="$(sed -n 's/^CONFIG_TARGET_ARCH_PACKAGES="\(.*\)"/\1/p' .config)"
@@ -117,5 +129,19 @@ else
   test -s "$output_dir/Packages.gz"
   test -s "$output_dir/Packages.sig"
 fi
+
+{
+  printf 'OpenWrt: %s\n' "$OPENWRT_VERSION"
+  printf 'Channel: %s\n' "$CHANNEL"
+  if (( build_status == 0 )); then
+    printf 'Build status: complete\n'
+  else
+    printf 'Build status: partial (see GitHub Actions log)\n'
+  fi
+  printf 'Source directories: %d\n' "${#custom_package_dirs[@]}"
+  printf 'Published package files:\n'
+  find "$output_dir" -maxdepth 1 -type f \( -name '*.apk' -o -name '*.ipk' \) \
+    -printf '  %f\n' | sort
+} > "$output_dir/build-report.txt"
 
 echo "published build output in $output_dir"
