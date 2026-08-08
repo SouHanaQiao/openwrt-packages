@@ -44,6 +44,9 @@ else
   package_pattern='*.ipk'
 fi
 
+# OpenWrt rejects package/index operations under a restrictive umask because
+# the resulting repository metadata would not be readable by all users.
+umask 022
 make defconfig
 
 source_package_dir="$shard_root/$CHANNEL/$arch/packages"

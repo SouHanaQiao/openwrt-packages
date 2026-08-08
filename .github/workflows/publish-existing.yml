@@ -1,0 +1,89 @@
+name: Publish existing package shards
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: GitHub Actions run ID containing package shard artifacts
+        required: true
+        type: string
+
+concurrency:
+  group: openwrt-package-pages
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  finalize:
+    name: Finalize OpenWrt ${{ matrix.channel }} feed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: ["25.12", "24.10"]
+    steps:
+      - name: Check out signing scripts
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.channel == '25.12' && 'main' || 'openwrt-24.10' }}
+
+      - name: Install index dependencies
+        run: sudo apt-get update && sudo apt-get install --yes zstd
+
+      - name: Merge existing package shards
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.run_id }}
+          pattern: packages-${{ matrix.channel }}-*
+          path: shard-output
+          merge-multiple: true
+
+      - name: Generate signed package index
+        env:
+          OPENWRT_VERSION: ${{ matrix.channel == '25.12' && '25.12.5' || '24.10.1' }}
+          CHANNEL: ${{ matrix.channel }}
+          SDK_URL: ${{ matrix.channel == '25.12' && 'https://downloads.openwrt.org/releases/25.12.5/targets/armsr/armv8/openwrt-sdk-25.12.5-armsr-armv8_gcc-14.3.0_musl.Linux-x86_64.tar.zst' || 'https://downloads.openwrt.org/releases/24.10.1/targets/armsr/armv8/openwrt-sdk-24.10.1-armsr-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst' }}
+          SDK_SHA256: ${{ matrix.channel == '25.12' && '1b0316604a3e820b2b008a1baff3f9dac6716af942bef800930e58c7de98c98b' || 'c9a8eb4072b63cda0037728c39e8d460c6f12590e42cad57003836f1d2974434' }}
+          PACKAGE_FORMAT: ${{ matrix.channel == '25.12' && 'apk' || 'ipk' }}
+          APK_PRIVATE_KEY: ${{ secrets.APK_PRIVATE_KEY }}
+          OPKG_PRIVATE_KEY: ${{ secrets.OPKG_PRIVATE_KEY }}
+        run: bash scripts/finalize-feed.sh
+
+      - name: Upload signed version feed
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovered-feed-${{ matrix.channel }}
+          path: site/
+          if-no-files-found: error
+
+  deploy:
+    name: Deploy package repository
+    needs: finalize
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Merge version feeds
+        uses: actions/download-artifact@v4
+        with:
+          pattern: recovered-feed-*
+          path: site
+          merge-multiple: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
