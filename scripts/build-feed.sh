@@ -57,6 +57,9 @@ printf 'CONFIG_SIGNED_PACKAGES=y\n' >> .config
 # available upstream. OpenClash only needs Ruby itself, not YJIT.
 if [[ "$OPENWRT_VERSION" == "24.10.1" ]]; then
   printf '# CONFIG_RUBY_ENABLE_YJIT is not set\n' >> .config
+  # The historical SmartDNS source also defines an optional Rust dashboard.
+  # LuCI uses the normal smartdns package and does not require this dashboard.
+  printf '# CONFIG_PACKAGE_smartdns-ui is not set\n' >> .config
 fi
 
 if [[ "$PACKAGE_FORMAT" == "apk" ]]; then
@@ -77,6 +80,10 @@ if [[ "$OPENWRT_VERSION" == "24.10.1" ]] && grep -q '^CONFIG_RUBY_ENABLE_YJIT=y'
   echo "RUBY_ENABLE_YJIT must remain disabled for the OpenWrt 24.10 build" >&2
   exit 1
 fi
+if [[ "$OPENWRT_VERSION" == "24.10.1" ]] && grep -q '^CONFIG_PACKAGE_smartdns-ui=' .config; then
+  echo "The optional SmartDNS Rust dashboard must remain disabled for OpenWrt 24.10" >&2
+  exit 1
+fi
 mapfile -t all_custom_package_dirs < <(
   find "$repo_root/packages" -mindepth 1 -maxdepth 1 -type d -print | sort
 )
@@ -86,11 +93,23 @@ if (( ${#all_custom_package_dirs[@]} == 0 )); then
 fi
 
 custom_package_dirs=()
-for package_index in "${!all_custom_package_dirs[@]}"; do
-  if (( package_index % shard_count == shard_index )); then
-    custom_package_dirs+=("${all_custom_package_dirs[$package_index]}")
-  fi
-done
+if [[ -n "${PACKAGE_DIRS:-}" ]]; then
+  read -r -a requested_package_names <<< "$PACKAGE_DIRS"
+  for package_name in "${requested_package_names[@]}"; do
+    if ! [[ "$package_name" =~ ^[A-Za-z0-9._+-]+$ ]] ||
+       [[ ! -d "$repo_root/packages/$package_name" ]]; then
+      echo "invalid requested package directory: $package_name" >&2
+      exit 1
+    fi
+    custom_package_dirs+=("$repo_root/packages/$package_name")
+  done
+else
+  for package_index in "${!all_custom_package_dirs[@]}"; do
+    if (( package_index % shard_count == shard_index )); then
+      custom_package_dirs+=("${all_custom_package_dirs[$package_index]}")
+    fi
+  done
+fi
 if (( ${#custom_package_dirs[@]} == 0 )); then
   echo "shard contains no custom package directories" >&2
   exit 1
@@ -141,6 +160,12 @@ if (( shard_count > 1 )); then
       -exec cp -a {} "$package_output_dir/" \;
   fi
 
+  report_name="${REPORT_NAME:-shard-$shard_index}"
+  if ! [[ "$report_name" =~ ^[A-Za-z0-9._-]+$ ]]; then
+    echo "invalid report name: $report_name" >&2
+    exit 1
+  fi
+
   {
     printf 'OpenWrt: %s\n' "$OPENWRT_VERSION"
     printf 'Channel: %s\n' "$CHANNEL"
@@ -157,7 +182,7 @@ if (( shard_count > 1 )); then
     printf 'Produced package files:\n'
     find "$package_output_dir" -maxdepth 1 -type f \
       -printf '  %f\n' | sort
-  } > "$report_dir/shard-$shard_index.txt"
+  } > "$report_dir/$report_name.txt"
 
   echo "published shard output in $output_dir"
   exit 0
