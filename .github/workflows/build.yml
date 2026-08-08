@@ -18,35 +18,21 @@ permissions:
 
 jobs:
   build:
-    name: OpenWrt ${{ matrix.openwrt_version }}
+    name: OpenWrt ${{ matrix.channel }} shard ${{ matrix.shard }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 330
+    timeout-minutes: 240
     strategy:
       fail-fast: false
+      max-parallel: 16
       matrix:
-        include:
-          - channel: "25.12"
-            ref: main
-            openwrt_version: "25.12.5"
-            package_format: apk
-            openwrt_ref: f0a60eee2fe051741c643ea6118718aae1ef17fb
-            feeds_buildinfo_url: https://downloads.openwrt.org/releases/25.12.5/targets/armsr/armv8/feeds.buildinfo
-            sdk_url: https://downloads.openwrt.org/releases/25.12.5/targets/armsr/armv8/openwrt-sdk-25.12.5-armsr-armv8_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-            sdk_sha256: 1b0316604a3e820b2b008a1baff3f9dac6716af942bef800930e58c7de98c98b
-          - channel: "24.10"
-            ref: openwrt-24.10
-            openwrt_version: "24.10.1"
-            package_format: ipk
-            openwrt_ref: d183d7bb7827a469f09bf77f2f22fd9d70ac0ed6
-            feeds_buildinfo_url: https://downloads.openwrt.org/releases/24.10.1/targets/armsr/armv8/feeds.buildinfo
-            sdk_url: https://downloads.openwrt.org/releases/24.10.1/targets/armsr/armv8/openwrt-sdk-24.10.1-armsr-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-            sdk_sha256: c9a8eb4072b63cda0037728c39e8d460c6f12590e42cad57003836f1d2974434
+        channel: ["25.12", "24.10"]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
 
     steps:
       - name: Check out package branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ matrix.ref }}
+          ref: ${{ matrix.channel == '25.12' && 'main' || 'openwrt-24.10' }}
 
       - name: Set up Go bootstrap
         uses: actions/setup-go@v6
@@ -62,21 +48,67 @@ jobs:
       - name: Validate feed
         run: bash scripts/validate-feed.sh
 
-      - name: Build signed package feed
+      - name: Build package shard
         env:
-          OPENWRT_VERSION: ${{ matrix.openwrt_version }}
+          OPENWRT_VERSION: ${{ matrix.channel == '25.12' && '25.12.5' || '24.10.1' }}
           CHANNEL: ${{ matrix.channel }}
-          SDK_URL: ${{ matrix.sdk_url }}
-          SDK_SHA256: ${{ matrix.sdk_sha256 }}
-          OPENWRT_REF: ${{ matrix.openwrt_ref }}
-          FEEDS_BUILDINFO_URL: ${{ matrix.feeds_buildinfo_url }}
-          PACKAGE_FORMAT: ${{ matrix.package_format }}
+          SDK_URL: ${{ matrix.channel == '25.12' && 'https://downloads.openwrt.org/releases/25.12.5/targets/armsr/armv8/openwrt-sdk-25.12.5-armsr-armv8_gcc-14.3.0_musl.Linux-x86_64.tar.zst' || 'https://downloads.openwrt.org/releases/24.10.1/targets/armsr/armv8/openwrt-sdk-24.10.1-armsr-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst' }}
+          SDK_SHA256: ${{ matrix.channel == '25.12' && '1b0316604a3e820b2b008a1baff3f9dac6716af942bef800930e58c7de98c98b' || 'c9a8eb4072b63cda0037728c39e8d460c6f12590e42cad57003836f1d2974434' }}
+          OPENWRT_REF: ${{ matrix.channel == '25.12' && 'f0a60eee2fe051741c643ea6118718aae1ef17fb' || 'd183d7bb7827a469f09bf77f2f22fd9d70ac0ed6' }}
+          FEEDS_BUILDINFO_URL: ${{ matrix.channel == '25.12' && 'https://downloads.openwrt.org/releases/25.12.5/targets/armsr/armv8/feeds.buildinfo' || 'https://downloads.openwrt.org/releases/24.10.1/targets/armsr/armv8/feeds.buildinfo' }}
+          PACKAGE_FORMAT: ${{ matrix.channel == '25.12' && 'apk' || 'ipk' }}
           APK_PRIVATE_KEY: ${{ secrets.APK_PRIVATE_KEY }}
           OPKG_PRIVATE_KEY: ${{ secrets.OPKG_PRIVATE_KEY }}
           BUILD_JOBS: "2"
+          SHARD_INDEX: ${{ matrix.shard }}
+          SHARD_COUNT: "8"
         run: bash scripts/build-feed.sh
 
-      - name: Upload version feed
+      - name: Upload package shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.channel }}-${{ matrix.shard }}
+          path: shard-output/
+          if-no-files-found: error
+          retention-days: 2
+
+  finalize:
+    name: Finalize OpenWrt ${{ matrix.channel }} feed
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: ["25.12", "24.10"]
+    steps:
+      - name: Check out signing scripts
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.channel == '25.12' && 'main' || 'openwrt-24.10' }}
+
+      - name: Install index dependencies
+        run: sudo apt-get update && sudo apt-get install --yes zstd
+
+      - name: Merge package shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: packages-${{ matrix.channel }}-*
+          path: shard-output
+          merge-multiple: true
+
+      - name: Generate signed package index
+        env:
+          OPENWRT_VERSION: ${{ matrix.channel == '25.12' && '25.12.5' || '24.10.1' }}
+          CHANNEL: ${{ matrix.channel }}
+          SDK_URL: ${{ matrix.channel == '25.12' && 'https://downloads.openwrt.org/releases/25.12.5/targets/armsr/armv8/openwrt-sdk-25.12.5-armsr-armv8_gcc-14.3.0_musl.Linux-x86_64.tar.zst' || 'https://downloads.openwrt.org/releases/24.10.1/targets/armsr/armv8/openwrt-sdk-24.10.1-armsr-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst' }}
+          SDK_SHA256: ${{ matrix.channel == '25.12' && '1b0316604a3e820b2b008a1baff3f9dac6716af942bef800930e58c7de98c98b' || 'c9a8eb4072b63cda0037728c39e8d460c6f12590e42cad57003836f1d2974434' }}
+          PACKAGE_FORMAT: ${{ matrix.channel == '25.12' && 'apk' || 'ipk' }}
+          APK_PRIVATE_KEY: ${{ secrets.APK_PRIVATE_KEY }}
+          OPKG_PRIVATE_KEY: ${{ secrets.OPKG_PRIVATE_KEY }}
+        run: bash scripts/finalize-feed.sh
+
+      - name: Upload signed version feed
         uses: actions/upload-artifact@v4
         with:
           name: feed-${{ matrix.channel }}
@@ -85,7 +117,7 @@ jobs:
 
   deploy:
     name: Deploy package repository
-    needs: build
+    needs: finalize
     runs-on: ubuntu-24.04
     environment:
       name: github-pages

@@ -73,6 +73,8 @@ GitHub Actions 使用与固件版本完全匹配的官方 SDK：
 
 - OpenWrt 25.12.5 `armsr/armv8`，输出 APK 和 `packages.adb`。
 - OpenWrt 24.10.1 `armsr/armv8`，输出 IPK、`Packages.gz` 和签名。
+- 每个版本拆分为 8 个并行构建分片，最后统一合并和签名，避免全量第三方包构建超时。
+- 每个在线目录包含 `build-report.txt`，记录实际发布的包文件和未完全成功的分片。
 
 构建产物由 GitHub Pages 发布。推送到 `main`、`openwrt-24.10` 或手动运行工作流都会重新构建两个版本。
 
