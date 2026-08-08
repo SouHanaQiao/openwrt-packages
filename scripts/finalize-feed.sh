@@ -29,6 +29,7 @@ fi
 
 cd "$sdk_root"
 printf 'CONFIG_SIGNED_PACKAGES=y\n' >> .config
+printf 'src-link souhana %s/packages\n' "$repo_root" > feeds.conf
 
 if [[ "$PACKAGE_FORMAT" == "apk" ]]; then
   : "${APK_PRIVATE_KEY:?missing APK_PRIVATE_KEY secret}"
@@ -66,7 +67,7 @@ if (( package_count == 0 )); then
   exit 1
 fi
 
-make package/index
+make package/index V=s
 
 output_dir="$repo_root/site/$CHANNEL/$arch"
 mkdir -p "$output_dir"
