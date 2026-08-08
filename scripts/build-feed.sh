@@ -9,6 +9,14 @@ set -euo pipefail
 : "${FEEDS_BUILDINFO_URL:?missing FEEDS_BUILDINFO_URL}"
 : "${PACKAGE_FORMAT:?missing PACKAGE_FORMAT}"
 
+shard_index="${SHARD_INDEX:-0}"
+shard_count="${SHARD_COUNT:-1}"
+if ! [[ "$shard_index" =~ ^[0-9]+$ && "$shard_count" =~ ^[1-9][0-9]*$ ]] ||
+   (( shard_index >= shard_count )); then
+  echo "invalid shard selection: index=$shard_index count=$shard_count" >&2
+  exit 1
+fi
+
 repo_root="${GITHUB_WORKSPACE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 runner_temp="${RUNNER_TEMP:-/tmp}"
 work_root="$runner_temp/souhana-openwrt-$OPENWRT_VERSION"
@@ -69,11 +77,22 @@ if [[ "$OPENWRT_VERSION" == "24.10.1" ]] && grep -q '^CONFIG_RUBY_ENABLE_YJIT=y'
   echo "RUBY_ENABLE_YJIT must remain disabled for the OpenWrt 24.10 build" >&2
   exit 1
 fi
-mapfile -t custom_package_dirs < <(
+mapfile -t all_custom_package_dirs < <(
   find "$repo_root/packages" -mindepth 1 -maxdepth 1 -type d -print | sort
 )
-if (( ${#custom_package_dirs[@]} == 0 )); then
+if (( ${#all_custom_package_dirs[@]} == 0 )); then
   echo "no custom package directories found" >&2
+  exit 1
+fi
+
+custom_package_dirs=()
+for package_index in "${!all_custom_package_dirs[@]}"; do
+  if (( package_index % shard_count == shard_index )); then
+    custom_package_dirs+=("${all_custom_package_dirs[$package_index]}")
+  fi
+done
+if (( ${#custom_package_dirs[@]} == 0 )); then
+  echo "shard contains no custom package directories" >&2
   exit 1
 fi
 
@@ -87,7 +106,8 @@ for package_dir in "${custom_package_dirs[@]}"; do
   custom_targets+=("package/feeds/souhana/$package_name/compile")
 done
 
-printf 'building custom targets:\n'
+printf 'building shard %s/%s with %s custom targets:\n' \
+  "$shard_index" "$shard_count" "${#custom_targets[@]}"
 printf '  %s\n' "${custom_targets[@]}"
 
 # Keep compiling independent packages when one historical package is not yet
@@ -103,14 +123,48 @@ if (( build_status != 0 )); then
   echo "::warning::Some historical package targets failed; publishing all successful packages"
 fi
 
-make package/index
-
 arch="$(sed -n 's/^CONFIG_TARGET_ARCH_PACKAGES="\(.*\)"/\1/p' .config)"
 if [[ -z "$arch" ]]; then
   arch="aarch64_generic"
 fi
 
 feed_dir="$sdk_root/bin/packages/$arch/souhana"
+
+if (( shard_count > 1 )); then
+  output_dir="$repo_root/shard-output/$CHANNEL/$arch"
+  package_output_dir="$output_dir/packages"
+  report_dir="$output_dir/reports"
+  mkdir -p "$package_output_dir" "$report_dir"
+
+  if [[ -d "$feed_dir" ]]; then
+    find "$feed_dir" -maxdepth 1 -type f \( -name '*.apk' -o -name '*.ipk' \) \
+      -exec cp -a {} "$package_output_dir/" \;
+  fi
+
+  {
+    printf 'OpenWrt: %s\n' "$OPENWRT_VERSION"
+    printf 'Channel: %s\n' "$CHANNEL"
+    printf 'Shard: %s/%s\n' "$shard_index" "$shard_count"
+    if (( build_status == 0 )); then
+      printf 'Build status: complete\n'
+    else
+      printf 'Build status: partial (see GitHub Actions log)\n'
+    fi
+    printf 'Total source directories: %d\n' "${#all_custom_package_dirs[@]}"
+    printf 'Shard source directories: %d\n' "${#custom_package_dirs[@]}"
+    printf 'Selected source directories:\n'
+    printf '  %s\n' "${custom_package_dirs[@]##*/}"
+    printf 'Produced package files:\n'
+    find "$package_output_dir" -maxdepth 1 -type f \
+      -printf '  %f\n' | sort
+  } > "$report_dir/shard-$shard_index.txt"
+
+  echo "published shard output in $output_dir"
+  exit 0
+fi
+
+make package/index
+
 if [[ ! -d "$feed_dir" ]]; then
   echo "custom feed output not found: $feed_dir" >&2
   find "$sdk_root/bin/packages" -maxdepth 3 -type d -print >&2 || true
