@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk 
 
 PKG_NAME:=luci-app-clash
-PKG_VERSION:=v1.8.0
+PKG_VERSION:=1.8.0
 PKG_RELEASE:=16
 PKG_MAINTAINER:=frainzy1477
 
