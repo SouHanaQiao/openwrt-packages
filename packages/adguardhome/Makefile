@@ -36,6 +36,7 @@ GO_PKG_LDFLAGS_X:=$(AGH_VERSION_PKG).channel=release \
 
 include $(INCLUDE_DIR)/package.mk
 include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
+GO_PKG_BUILD_VARS += GOFLAGS=-buildvcs=false
 
 define Package/adguardhome
 	SECTION:=net
