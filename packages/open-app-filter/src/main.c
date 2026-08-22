@@ -180,7 +180,7 @@ void af_load_global_config(af_global_config_t *config){
         config->auto_load_engine = ret;
 
 
-    ret = af_uci_get_value(ctx, "appfilter.global.disable_hnat", lan_ifname, sizeof(lan_ifname));
+    ret = af_uci_get_value(ctx, "appfilter.global.lan_ifname", lan_ifname, sizeof(lan_ifname));
 	if (ret < 0)
 		strncpy(config->lan_ifname, "br-lan", sizeof(config->lan_ifname) - 1);
 	else

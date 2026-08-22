@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=appfilter
 PKG_VERSION:=6.1.3
-PKG_RELEASE:=19
+PKG_RELEASE:=20
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 include $(INCLUDE_DIR)/package.mk
@@ -53,6 +53,10 @@ define Package/appfilter/install
 	$(INSTALL_BIN) ./files/hnat.sh $(1)/usr/bin
 endef
 
+define Package/appfilter/conffiles
+/etc/config/appfilter
+/etc/config/user_info
+endef
+
 
 $(eval $(call BuildPackage,appfilter))
-
