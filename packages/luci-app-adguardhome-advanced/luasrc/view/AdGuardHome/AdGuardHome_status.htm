@@ -1,0 +1,16 @@
+<script type="text/javascript">//<![CDATA[
+XHR.poll(3, '<%=url([[admin]], [[services]], [[AdGuardHome]], [[status]])%>', null,
+	function(x, data) {
+		var target = document.getElementById('AdGuardHome_status');
+		if (!data || !target)
+			return;
+		if (data.running)
+			target.innerHTML = '<em><b><font color="green">AdGuard Home <%:RUNNING%> · OpenWrt official service</font></b></em>';
+		else
+			target.innerHTML = '<em><b><font color="red">AdGuard Home <%:NOT RUNNING%></font></b></em>';
+	});
+//]]>
+</script>
+<fieldset class="cbi-section">
+	<p id="AdGuardHome_status"><em><%:Collecting data...%></em></p>
+</fieldset>

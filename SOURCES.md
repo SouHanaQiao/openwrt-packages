@@ -30,11 +30,13 @@ Ubuntu 上旧 OpenWrt 24.10 构建的
 | `luci-app-nikki`、`nikki` | Nikki/Mihomo | 原 25.12 构建树，含 25.12 构建兼容修复 |
 | `smartdns`、`luci-app-smartdns` | SmartDNS 后端和 LuCI | OpenWrt 25.12 对应 Feed 快照 |
 | `adguardhome` | AdGuardHome 后端 | OpenWrt 25.12 对应 Feed 快照 |
+| `luci-app-adguardhome-advanced` | 使用官方核心的高级 LuCI 管理界面 | 改编自 `rufengsuixing/luci-app-adguardhome`；适配说明见包内 `UPSTREAM.md` |
 | 其余历史第三方目录 | 24.10 实际生成过的第三方包 | `kiddin9/kwrt-packages` 快照 |
 
-OpenWrt 25.12 的 AdGuard Home 管理页必须使用官方 LuCI Feed 中的
-`luci-app-adguardhome`。本仓库已删除同名第三方版本，避免旧版大写
-`/etc/init.d/AdGuardHome` 覆盖官方小写 `/etc/init.d/adguardhome` 服务。
+OpenWrt 25.12 不再提供同名第三方 `luci-app-adguardhome`，避免覆盖官方包。
+新增的 `luci-app-adguardhome-advanced` 只提供高级前端，依赖官方
+`adguardhome` 核心；旧版大写 `/etc/init.d/AdGuardHome`、内置核心更新和
+防火墙重定向脚本均未保留。
 
 ## `openwrt-24.10` / OpenWrt 24.10
 

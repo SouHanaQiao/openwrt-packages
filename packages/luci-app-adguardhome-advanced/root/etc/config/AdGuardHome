@@ -1,0 +1,8 @@
+config AdGuardHome 'AdGuardHome'
+	option enabled '1'
+	option httpport '3000'
+	option configpath '/etc/adguardhome/adguardhome.yaml'
+	option workdir '/var/lib/adguardhome'
+	option logfile 'syslog'
+	option verbose '0'
+	option binpath '/usr/bin/AdGuardHome'

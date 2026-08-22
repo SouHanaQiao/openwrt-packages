@@ -1,0 +1,11 @@
+{
+	"luci-app-adguardhome-advanced": {
+		"description": "Grant access to the advanced frontend for official AdGuard Home",
+		"read": {
+			"uci": [ "AdGuardHome", "adguardhome" ]
+		},
+		"write": {
+			"uci": [ "AdGuardHome", "adguardhome" ]
+		}
+	}
+}

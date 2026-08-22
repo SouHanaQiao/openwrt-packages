@@ -11,7 +11,9 @@
 
 本仓库保存自维护包、旧 24.10 固件实际生成过的第三方包，以及需要独立更新版本的 SmartDNS、AdGuardHome 等包。自有 Feed 排在官方 Feed 之前，同名包优先使用本仓库版本。详细来源见 [SOURCES.md](SOURCES.md)。
 
-> OpenWrt 25.12 的 `luci-app-adguardhome` 使用 OpenWrt 官方 LuCI Feed。本仓库不再提供同名第三方版本，避免覆盖官方小写 `adguardhome` 服务。
+> OpenWrt 25.12 提供 `luci-app-adguardhome-advanced` 高级管理界面。它只负责
+> LuCI 展示与配置，核心程序仍使用 OpenWrt 官方 `adguardhome` 包、官方小写
+> `/etc/init.d/adguardhome` 服务和官方配置目录，不会在网页中下载或替换二进制。
 
 ## 源码 Feed
 
@@ -34,6 +36,10 @@ src-git souhana https://github.com/SouHanaQiao/openwrt-packages.git;openwrt-24.1
 ./scripts/feeds install -a -f -p souhana
 make menuconfig
 ```
+
+AdGuard Home 高级界面在 `LuCI → Applications` 中选择
+`luci-app-adguardhome-advanced`。不要同时选择官方简版
+`luci-app-adguardhome`，二者会提供重复的菜单入口。
 
 ## OpenWrt 25.12 APK 软件源
 

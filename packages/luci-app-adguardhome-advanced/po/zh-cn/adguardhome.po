@@ -1,0 +1,83 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Base Setting"
+msgstr "基础设置"
+
+msgid "Log"
+msgstr "日志"
+
+msgid "Manual Config"
+msgstr "手动配置"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Official core version"
+msgstr "官方核心版本"
+
+msgid "Browser management port"
+msgstr "网页管理端口"
+
+msgid "Config Path"
+msgstr "配置文件路径"
+
+msgid "Work dir"
+msgstr "工作目录"
+
+msgid "Runtime log"
+msgstr "运行日志"
+
+msgid "System log"
+msgstr "系统日志"
+
+msgid "Disabled"
+msgstr "禁用"
+
+msgid "Verbose log"
+msgstr "详细日志"
+
+msgid "Service account"
+msgstr "服务账户"
+
+msgid "DNS chain"
+msgstr "DNS 链路"
+
+msgid "AdGuard Home Log"
+msgstr "AdGuard Home 日志"
+
+msgid "RUNNING"
+msgstr "运行中"
+
+msgid "NOT RUNNING"
+msgstr "未运行"
+
+msgid "Collecting data..."
+msgstr "正在获取状态……"
+
+msgid "Feature-rich frontend for OpenWrt's official AdGuard Home package. The core binary is managed only by apk."
+msgstr "面向 OpenWrt 官方 AdGuard Home 软件包的高级管理界面；核心程序只通过 apk 管理。"
+
+msgid "The binary comes from OpenWrt's official adguardhome package. Upgrade it through Software or apk, not from this page."
+msgstr "核心程序来自 OpenWrt 官方 adguardhome 软件包，请通过“软件包”或 apk 升级，本页面不会替换核心。"
+
+msgid "Official configuration file used by /etc/init.d/adguardhome."
+msgstr "OpenWrt 官方 adguardhome 服务使用的配置文件。"
+
+msgid "Official working directory containing filters, logs and statistics."
+msgstr "官方工作目录，用于保存过滤规则、日志和统计数据。"
+
+msgid "This frontend does not alter firewall rules, DNS redirection, or the official binary."
+msgstr "本界面不会修改防火墙规则、DNS 重定向或官方核心程序。"
+
+msgid "Configuration file must be stored in its own directory"
+msgstr "配置文件必须保存在独立目录中"
+
+msgid "Edit the YAML used by OpenWrt's official AdGuard Home service. Configuration is validated before it is installed."
+msgstr "编辑 OpenWrt 官方 AdGuard Home 服务使用的 YAML；保存前会先校验配置。"
+
+msgid "Configuration validation failed"
+msgstr "配置校验失败"
+
+msgid "Saving validates the YAML and restarts OpenWrt's official adguardhome service."
+msgstr "保存时会校验 YAML，并重启 OpenWrt 官方 adguardhome 服务。"
