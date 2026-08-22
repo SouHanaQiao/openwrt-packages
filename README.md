@@ -11,6 +11,8 @@
 
 本仓库保存自维护包、旧 24.10 固件实际生成过的第三方包，以及需要独立更新版本的 SmartDNS、AdGuardHome 等包。自有 Feed 排在官方 Feed 之前，同名包优先使用本仓库版本。详细来源见 [SOURCES.md](SOURCES.md)。
 
+> OpenWrt 25.12 的 `luci-app-adguardhome` 使用 OpenWrt 官方 LuCI Feed。本仓库不再提供同名第三方版本，避免覆盖官方小写 `adguardhome` 服务。
+
 ## 源码 Feed
 
 OpenWrt 25.12：

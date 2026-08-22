@@ -27,11 +27,14 @@ Ubuntu 上旧 OpenWrt 24.10 构建的
 | 目录 | 说明 | 来源 |
 | --- | --- | --- |
 | `ClashSubscriber` | 本地订阅转换脚本 | 原 24.10/25.12 构建树 |
-| `luci-app-adguardhome` | AdGuardHome LuCI 管理页 | `rufengsuixing/luci-app-adguardhome` 衍生版本 |
 | `luci-app-nikki`、`nikki` | Nikki/Mihomo | 原 25.12 构建树，含 25.12 构建兼容修复 |
 | `smartdns`、`luci-app-smartdns` | SmartDNS 后端和 LuCI | OpenWrt 25.12 对应 Feed 快照 |
 | `adguardhome` | AdGuardHome 后端 | OpenWrt 25.12 对应 Feed 快照 |
 | 其余历史第三方目录 | 24.10 实际生成过的第三方包 | `kiddin9/kwrt-packages` 快照 |
+
+OpenWrt 25.12 的 AdGuard Home 管理页必须使用官方 LuCI Feed 中的
+`luci-app-adguardhome`。本仓库已删除同名第三方版本，避免旧版大写
+`/etc/init.d/AdGuardHome` 覆盖官方小写 `/etc/init.d/adguardhome` 服务。
 
 ## `openwrt-24.10` / OpenWrt 24.10
 
